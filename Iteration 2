@@ -1,116 +1,205 @@
-import tkinter as tk
-from tkinter import messagebox
-from datetime import datetime
+"""
+Fitness Tracker GUI Application
+
+This program creates a graphical user interface (GUI) for a fitness tracker application using the Tkinter library in Python.
+
+Features:
+- Allows users to input their name.
+- Allows users to select a workout program from predefined options.
+- Displays workout details for the selected program.
+- Enables users to track their diet by logging meals.
+- Enables users to track training days.
+- Provides a summary of the user's fitness activities.
+"""
+
+import tkinter as tk  #importing the Tkinter library for GUI components
+from tkinter import messagebox  #importing messagebox for dialog boxes
+from datetime import datetime  #importing datetime for handling date and time
 
 class FitnessTrackerGUI:
+    """Class to create the Fitness Tracker GUI application."""
+
     def __init__(self, root):
-        self.root = root
-        self.root.title("Fitness Tracker")
-        
-        self.user_name = ""
-        self.workout_program = ""
-        self.diet_log = []
-        self.training_days = []
+        """Initialize the GUI components and variables."""
+        self.root = root  #reference to the main window
+        self.root.title("Fitness Tracker")  #set the window title
+
+        #initialize user-related variables
+        self.user_name = ""  #store the user's name
+        self.workout_program = ""  #store the selected workout program
+        self.diet_log = []  #list to store diet entries
+        self.training_days = []  #list to store training days
+
+        #dictionary containing workout details for each program
         self.workout_details = {
-            "Legs": [("Squats", 4, 12), ("Lunges", 3, 15), ("Leg Press", 3, 10), ("Calf Raises", 4, 20)],
-            "Chest/Back": [("Bench Press", 4, 10), ("Pull-ups", 3, 8), ("Dumbbell Rows", 3, 12), ("Chest Fly", 3, 15)],
-            "Arms/Shoulders": [("Bicep Curls", 3, 12), ("Tricep Dips", 3, 10), ("Shoulder Press", 3, 10), ("Lateral Raises", 3, 15)]
+            "Legs": [
+                ("Squats", 4, 12),
+                ("Lunges", 3, 15),
+                ("Leg Press", 3, 10),
+                ("Calf Raises", 4, 20)
+            ],
+            "Chest/Back": [
+                ("Bench Press", 4, 10),
+                ("Pull-ups", 3, 8),
+                ("Dumbbell Rows", 3, 12),
+                ("Chest Fly", 3, 15)
+            ],
+            "Arms/Shoulders": [
+                ("Bicep Curls", 3, 12),
+                ("Tricep Dips", 3, 10),
+                ("Shoulder Press", 3, 10),
+                ("Lateral Raises", 3, 15)
+            ]
         }
 
-        self.create_widgets()
+        self.create_widgets()  #call method to create GUI widgets
 
     def create_widgets(self):
-        # User Info Frame
-        user_info_frame = tk.Frame(self.root)
-        user_info_frame.pack(pady=10)
+        """Create and layout all the widgets in the GUI."""
+        #user Info Frame
+        user_info_frame = tk.Frame(self.root)  # frame for user information
+        user_info_frame.pack(pady=10)  #pack the frame with some padding
 
-        tk.Label(user_info_frame, text="Enter your name:").grid(row=0, column=0)
-        self.name_entry = tk.Entry(user_info_frame)
-        self.name_entry.grid(row=0, column=1)
+        #label and Entry for user to input their name
+        tk.Label(user_info_frame, text="Enter your name:").grid(row=0, column=0)  #label for name input
+        self.name_entry = tk.Entry(user_info_frame)  #entry widget for name input
+        self.name_entry.grid(row=0, column=1)  #position the entry widget
 
-        tk.Button(user_info_frame, text="Set Name", command=self.set_user_name).grid(row=0, column=2, padx=10)
+        #button to set the user's name
+        tk.Button(
+            user_info_frame,
+            text="Set Name",
+            command=self.set_user_name
+        ).grid(row=0, column=2, padx=10)  #button to confirm name input
 
-        # Workout Program Frame
-        workout_frame = tk.Frame(self.root)
-        workout_frame.pack(pady=10)
+        #workout Program Frame
+        workout_frame = tk.Frame(self.root)  #frame for workout selection
+        workout_frame.pack(pady=10)  #pack the frame with some padding
 
-        tk.Label(workout_frame, text="Select a workout program:").grid(row=0, column=0)
-        self.program_var = tk.StringVar(value="Legs")
-        program_options = ["Legs", "Chest/Back", "Arms/Shoulders"]
-        self.program_menu = tk.OptionMenu(workout_frame, self.program_var, *program_options)
-        self.program_menu.grid(row=0, column=1)
+        #label and OptionMenu for selecting a workout program
+        tk.Label(workout_frame, text="Select a workout program:").grid(row=0, column=0)  #label for workout selection
+        self.program_var = tk.StringVar(value="Legs")  #variable to store selected program, default is "Legs"
+        program_options = ["Legs", "Chest/Back", "Arms/Shoulders"]  #list of available programs
+        self.program_menu = tk.OptionMenu(
+            workout_frame,
+            self.program_var,
+            *program_options
+        )  #dropdown menu for program selection
+        self.program_menu.grid(row=0, column=1)  #position the dropdown menu
 
-        tk.Button(workout_frame, text="Select Program", command=self.select_workout_program).grid(row=0, column=2, padx=10)
+        #button to select the workout program
+        tk.Button(
+            workout_frame,
+            text="Select Program",
+            command=self.select_workout_program
+        ).grid(row=0, column=2, padx=10)  #button to confirm program selection
 
         # Buttons Frame
-        buttons_frame = tk.Frame(self.root)
-        buttons_frame.pack(pady=10)
+        buttons_frame = tk.Frame(self.root)  #frame for action buttons
+        buttons_frame.pack(pady=10)  #pack the frame with some padding
 
-        tk.Button(buttons_frame, text="Track Diet", command=self.track_diet).grid(row=0, column=0, padx=5)
-        tk.Button(buttons_frame, text="Track Training Day", command=self.track_training_day).grid(row=0, column=1, padx=5)
-        tk.Button(buttons_frame, text="Show Summary", command=self.show_summary).grid(row=0, column=2, padx=5)
+        #buttons for tracking diet, training day, showing summary, and exiting the app
+        tk.Button(
+            buttons_frame,
+            text="Track Diet",
+            command=self.track_diet
+        ).grid(row=0, column=0, padx=5)  #button to track diet
+        tk.Button(
+            buttons_frame,
+            text="Track Training Day",
+            command=self.track_training_day
+        ).grid(row=0, column=1, padx=5)  #button to track training day
+        tk.Button(
+            buttons_frame,
+            text="Show Summary",
+            command=self.show_summary
+        ).grid(row=0, column=2, padx=5)  #button to show summary
 
-        tk.Button(buttons_frame, text="Exit", command=self.root.quit).grid(row=0, column=3, padx=5)
+        tk.Button(
+            buttons_frame,
+            text="Exit",
+            command=self.root.quit
+        ).grid(row=0, column=3, padx=5)  #button to exit the application
 
     def set_user_name(self):
-        self.user_name = self.name_entry.get()
+        """Set the user's name based on the input and display a welcome message."""
+        self.user_name = self.name_entry.get()  #get the name from the entry widget
         if self.user_name:
-            messagebox.showinfo("Info", f"Welcome, {self.user_name}!")
+            messagebox.showinfo("Info", f"Welcome, {self.user_name}!")  #display welcome message
         else:
-            messagebox.showwarning("Warning", "Please enter your name.")
+            messagebox.showwarning("Warning", "Please enter your name.")  #warn if name is empty
 
     def select_workout_program(self):
-        self.workout_program = self.program_var.get()
+        """Set the workout program based on the selection and show the workout details."""
+        self.workout_program = self.program_var.get()  #get the selected workout program
         if self.workout_program:
-            self.show_workout_details()
+            self.show_workout_details()  #display the details of the selected program
         else:
-            messagebox.showwarning("Warning", "Please select a workout program.")
+            messagebox.showwarning("Warning", "Please select a workout program.")  #warn if no program is selected
 
     def show_workout_details(self):
-        details = f"Exercises for {self.workout_program} program:\n"
+        """Display the exercises, sets, and reps for the selected workout program."""
+        details = f"Exercises for {self.workout_program} program:\n"  #header for the details
+        #loop through each exercise in the selected program and add to the details string
         for exercise, sets, reps in self.workout_details[self.workout_program]:
-            details += f"- {exercise}: {sets} sets of {reps} reps\n"
-        messagebox.showinfo("Workout Details", details)
+            details += f"- {exercise}: {sets} sets of {reps} reps\n"  #append exercise details
+        messagebox.showinfo("Workout Details", details)  #display the workout details in a message box
 
     def track_diet(self):
-        diet_window = tk.Toplevel(self.root)
-        diet_window.title("Track Diet")
+        """Open a new window to allow the user to log their meal."""
+        diet_window = tk.Toplevel(self.root)  #create a new top-level window for diet tracking
+        diet_window.title("Track Diet")  #set the title of the window
 
-        tk.Label(diet_window, text="Enter the details of your meal:").pack(pady=10)
-        self.diet_entry = tk.Entry(diet_window, width=40)
-        self.diet_entry.pack(pady=10)
+        #label and Entry for entering meal details
+        tk.Label(
+            diet_window,
+            text="Enter the details of your meal:"
+        ).pack(pady=10)  #label for meal input
+        self.diet_entry = tk.Entry(diet_window, width=40)  #entry widget for meal input
+        self.diet_entry.pack(pady=10)  #position the entry widget
 
-        tk.Button(diet_window, text="Add Meal", command=self.add_meal).pack(pady=10)
+        #button to add the meal to the diet log
+        tk.Button(
+            diet_window,
+            text="Add Meal",
+            command=self.add_meal
+        ).pack(pady=10)  #button to add meal
 
     def add_meal(self):
-        meal = self.diet_entry.get()
+        """Add the entered meal to the diet log."""
+        meal = self.diet_entry.get()  #get the meal details from the entry widget
         if meal:
-            self.diet_log.append(meal)
-            messagebox.showinfo("Info", "Meal added to your diet log.")
+            self.diet_log.append(meal)  #add the meal to the diet log list
+            messagebox.showinfo("Info", "Meal added to your diet log.")  #confirm addition
         else:
-            messagebox.showwarning("Warning", "Please enter meal details.")
+            messagebox.showwarning("Warning", "Please enter meal details.")  #warn if no meal details are entered
 
     def track_training_day(self):
-        today = datetime.today().strftime('%Y-%m-%d')
-        self.training_days.append(today)
-        messagebox.showinfo("Info", f"Training day {today} added.")
+        """Record the current date as a training day."""
+        today = datetime.today().strftime('%Y-%m-%d')  #get the current date in YYYY-MM-DD format
+        self.training_days.append(today)  #add the date to the list of training days
+        messagebox.showinfo("Info", f"Training day {today} added.")  #confirm addition
 
     def show_summary(self):
-        summary = f"--- Summary ---\n"
-        summary += f"Name: {self.user_name}\n"
-        summary += f"Workout Program: {self.workout_program}\n\n"
-        summary += "Diet Log:\n"
+        """Display a summary of the user's name, selected workout program, diet log, and training days."""
+        summary = f"--- Summary ---\n"  #header for the summary
+        summary += f"Name: {self.user_name}\n"  #add user's name to summary
+        summary += f"Workout Program: {self.workout_program}\n\n"  #add workout program to summary
+        summary += "Diet Log:\n"  #header for diet log
+        #add each meal in the diet log to the summary
         for meal in self.diet_log:
-            summary += f"- {meal}\n"
-        summary += "\nTraining Days:\n"
+            summary += f"- {meal}\n"  #append meal details
+        summary += "\nTraining Days:\n"  #header for training days
+        #add each training day to the summary
         for day in self.training_days:
-            summary += f"- {day}\n"
+            summary += f"- {day}\n"  #append training day
+        messagebox.showinfo("Summary", summary)  #display the summary in a message box
 
-        messagebox.showinfo("Summary", summary)
-
+#main execution starts here
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = FitnessTrackerGUI(root)
-    root.mainloop()
+    root = tk.Tk()  #create the main application window
+    app = FitnessTrackerGUI(root)  #create an instance of the FitnessTrackerGUI class
+    root.mainloop()  #start the Tkinter event loop
+
 
 
