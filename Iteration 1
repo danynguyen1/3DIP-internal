@@ -1,81 +1,94 @@
 class FitnessTracker:
+    #Initializes the FitnessTracker with user attributes and workout details.
     def __init__(self):
-        self.user_name = ""
-        self.workout_program = ""
-        self.diet_log = []
-        self.training_days = []
+        self.user_name = ""  #User's name
+        self.workout_program = ""  #Selected workout program
+        self.diet_log = []  #Log of meals
+        self.training_days = []  #Log of training dates
+        #Dictionary of workout exercises categorized by body part
         self.workout_details = {
             "Legs": [("Squats", 4, 12), ("Lunges", 3, 15), ("Leg Press", 3, 10), ("Calf Raises", 4, 20)],
             "Chest/Back": [("Bench Press", 4, 10), ("Pull-ups", 3, 8), ("Dumbbell Rows", 3, 12), ("Chest Fly", 3, 15)],
             "Arms/Shoulders": [("Bicep Curls", 3, 12), ("Tricep Dips", 3, 10), ("Shoulder Press", 3, 10), ("Lateral Raises", 3, 15)]
         }
 
+    #Prompts the user for their name and welcomes them.
     def get_user_info(self):
-        self.user_name = input("Enter your name: ")
-        print(f"Welcome, {self.user_name}!")
+        self.user_name = input("Enter your name: ")  #Get user's name
+        print(f"Welcome, {self.user_name}!")  #Welcome message
 
+    #Allows the user to select a workout program from available options.
     def select_workout_program(self):
-        programs = ["1. Legs", "2. Chest/Back", "3. Arms/Shoulders"]
-        print("Select a workout program:")
-        for program in programs:
+        programs = ["1. Legs", "2. Chest/Back", "3. Arms/Shoulders"]  #List of programs
+        print("Select a workout program:")  #Instruction
+        for program in programs:  #Display programs
             print(program)
-        choice = input("Enter the number of your choice: ")
+        choice = input("Enter the number of your choice: ")  #Get user choice
 
+        #Map choice to program name
         program_dict = {
             "1": "Legs",
             "2": "Chest/Back",
             "3": "Arms/Shoulders"
         }
 
+        #Set the selected program and show details if valid
         self.workout_program = program_dict.get(choice, "Invalid choice")
         if self.workout_program != "Invalid choice":
-            print(f"You have selected the {self.workout_program} program.")
-            self.show_workout_details()
+            print(f"You have selected the {self.workout_program} program.")  #Confirmation
+            self.show_workout_details()  #Show workout details
         else:
-            print("Invalid choice. Please select a valid program.")
-            self.select_workout_program()
+            print("Invalid choice. Please select a valid program.")  #Error message
+            self.select_workout_program()  #Retry selection
 
+    #Displays the exercises included in the selected workout program.
     def show_workout_details(self):
-        print(f"\nExercises for {self.workout_program} program:")
-        for exercise, sets, reps in self.workout_details[self.workout_program]:
+        print(f"\nExercises for {self.workout_program} program:")  #Header
+        for exercise, sets, reps in self.workout_details[self.workout_program]:  #Loop through exercises
             print(f"- {exercise}: {sets} sets of {reps} reps")
 
+    #Logs a meal entered by the user into the diet log.
     def track_diet(self):
-        meal = input("Enter the details of your meal: ")
-        self.diet_log.append(meal)
-        print("Meal added to your diet log.")
+        meal = input("Enter the details of your meal: ")  #Get meal details
+        self.diet_log.append(meal)  #Add to diet log
+        print("Meal added to your diet log.")  #Confirmation
 
+    #Records the current date as a training day.
     def track_training_day(self):
-        from datetime import datetime
-        today = datetime.today().strftime('%Y-%m-%d')
-        self.training_days.append(today)
-        print(f"Training day {today} added.")
+        from datetime import datetime  #Import datetime module
+        today = datetime.today().strftime('%Y-%m-%d')  #Get today's date
+        self.training_days.append(today)  #Add date to training days
+        print(f"Training day {today} added.")  #Confirmation
 
+    #Shows a summary of the user's fitness journey, including their name,
+    #selected program, diet log, and training days.
     def show_summary(self):
-        print("\n--- Summary ---")
-        print(f"Name: {self.user_name}")
-        print(f"Workout Program: {self.workout_program}")
-        print("Diet Log:")
-        for meal in self.diet_log:
+        print("\n--- Summary ---")  #Summary header
+        print(f"Name: {self.user_name}")  #User's name
+        print(f"Workout Program: {self.workout_program}")  #Selected program
+        print("Diet Log:")  #Diet log header
+        for meal in self.diet_log:  #Display diet log entries
             print(f"- {meal}")
-        print("Training Days:")
-        for day in self.training_days:
+        print("Training Days:")  #Training days header
+        for day in self.training_days:  #Display training days
             print(f"- {day}")
 
+#Main function to run the FitnessTracker application.
 def main():
-    tracker = FitnessTracker()
-    tracker.get_user_info()
-    tracker.select_workout_program()
+    tracker = FitnessTracker()  #Create FitnessTracker instance
+    tracker.get_user_info()  #Get user info
+    tracker.select_workout_program()  #Select workout program
 
-    while True:
-        print("\nMenu:")
-        print("1. Track Diet")
-        print("2. Track Training Day")
-        print("3. Show Summary")
-        print("4. Change Workout Program")
-        print("5. Exit")
-        choice = input("Enter your choice: ")
+    while True:  #Loop for menu options
+        print("\nMenu:")  #Menu header
+        print("1. Track Diet")  #Option to track diet
+        print("2. Track Training Day")  #Option to track training day
+        print("3. Show Summary")  #Option to show summary
+        print("4. Change Workout Program")  #Option to change program
+        print("5. Exit")  #Option to exit
+        choice = input("Enter your choice: ")  #Get menu choice
 
+        #Execute corresponding method based on choice
         if choice == "1":
             tracker.track_diet()
         elif choice == "2":
@@ -85,11 +98,14 @@ def main():
         elif choice == "4":
             tracker.select_workout_program()
         elif choice == "5":
-            print("Exiting the program. Stay fit!")
-            break
+            print("Exiting the program. Stay fit!")  #Exit message
+            break  #Exit the loop
         else:
-            print("Invalid choice. Please select a valid option.")
+            print("Invalid choice. Please select a valid option.")  #Error message
 
+#Entry point for the program
 if __name__ == "__main__":
-    main()
+    main()  #Run the main function
+
+
 
