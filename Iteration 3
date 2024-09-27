@@ -1,1 +1,770 @@
+import customtkinter as ctk
+import tkinter as tk
+from tkinter import messagebox
+from tkcalendar import Calendar
+from datetime import datetime, timedelta
+from PIL import Image, ImageTk, ImageOps  #this is used for handling images
+import json  #import JSON to store user information and login details
+
+class FitnessTrackerApp:
+    """
+    The FitnessTrackerApp class initializes the main structure of the fitness tracker application.
+    It handles user login, data management, and navigation through various features such as
+    tracking diet, workouts, and displaying a summary. 
+    """
+    def __init__(self, root):
+        #this here initiates the main window setup
+        self.root = root
+        self.root.geometry("900x600")
+        self.root.title("Fitness Tracker")
+
+        # since I have used customtkinter this sets the appearance mode and theme for the app using customtkinter
+        ctk.set_appearance_mode("dark")  #the avaliable modes are: "System", "Dark", "Light"
+        ctk.set_default_color_theme("dark-blue")
+
+        self.user_name = ""  #this stores the logged-in user's name
+        self.daily_log = {}  #this stores the user's daily log data
+        #here it calculates the start of the current week (Monday)
+        self.current_week_start = datetime.now() - timedelta(days=datetime.now().weekday())
+
+        self.selected_day = tk.StringVar()  # here stores the selected tracking day as a string
+
+        # this function loads user data from JSON file for consistent storage across different sessions
+        try:
+            with open('users.json', 'r') as f:
+                self.user_data = json.load(f)
+        except FileNotFoundError:
+            self.user_data = {}
+
+        #here it handles the close window event to ensure data is saved before exiting
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+        #this here sets the layout of the main window using grid configuration
+        self.root.columnconfigure(0, weight=0)  #this is Sidebar column
+        self.root.columnconfigure(1, weight=1)  #this is Main content column
+        self.root.rowconfigure(0, weight=1)
+
+        # then it starts the app with the login screen
+        self.create_login_screen()
+
+    def on_closing(self):
+        """
+        Handles application closure and ensures that user data is saved before quitting.
+        Prompts the user to confirm the action and proceeds to save and close the app.
+        """
+        if messagebox.askokcancel("Quit", "Do you want to quit?"):
+            #saves the user data before quitting
+            if self.user_name:
+                self.save_user_data()
+            self.root.destroy()
+
+    def clear_root(self):
+        """
+        Clears all widgets in the root window.
+        This is useful for switching between different views in the app without overlapping frames.
+        """
+        for widget in self.root.winfo_children():
+            widget.destroy()
+        self.current_frame = None  #this resets the current frame reference
+
+    def clear_main_frame(self):
+        """
+        Destroy all widgets within the main content frame.
+        Useful when switching content without clearing the entire window structure.
+        """
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+
+    def show_frame(self, frame):
+        """
+        Destroys the current frame being displayed and sets a new frame to be shown.
+        Ensures smooth transitions between different frames in the app.
+        """
+        if hasattr(self, 'current_frame') and self.current_frame is not None:
+            self.current_frame.destroy()
+        self.current_frame = frame
+        self.current_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+
+    def create_login_screen(self):
+        """
+        Create and display the login screen, allowing the user to input the information.
+        Provides fields for username and password, with buttons for login and account creation.
+        Also loads a footer image for aesthetic appeal.
+        """
+        self.clear_root()
+
+        self.login_frame = ctk.CTkFrame(self.root)
+        self.login_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=20)
+
+        self.login_frame.columnconfigure(0, weight=1)
+        self.login_frame.columnconfigure(1, weight=1)
+
+        login_label = ctk.CTkLabel(self.login_frame, text="Login", font=ctk.CTkFont(size=28, weight="bold", family="Helvetica"))
+        login_label.grid(row=0, column=0, columnspan=2, pady=20)
+
+        username_label = ctk.CTkLabel(self.login_frame, text="Username:")
+        username_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
+
+        self.username_entry = ctk.CTkEntry(self.login_frame)
+        self.username_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+
+        password_label = ctk.CTkLabel(self.login_frame, text="Password:")
+        password_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
+
+        self.password_entry = ctk.CTkEntry(self.login_frame, show="*")
+        self.password_entry.grid(row=2, column=1, padx=10, pady=10, sticky="w")
+
+        login_button = ctk.CTkButton(self.login_frame, text="Login", command=self.verify_login)
+        login_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
+        create_account_button = ctk.CTkButton(self.login_frame, text="Create Account", command=self.create_account_screen)
+        create_account_button.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
+
+        try:
+            footer_image = Image.open("footer.jpg")
+            footer_image = ImageOps.fit(footer_image, (700, 200), Image.LANCZOS)
+            self.footer_photo = ImageTk.PhotoImage(footer_image)
+            footer_label = tk.Label(self.login_frame, image=self.footer_photo)
+            footer_label.grid(row=5, column=0, columnspan=2, pady=10)
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Footer image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the footer image:\n{e}")
+
+    def verify_login(self):
+        """
+        Check the entered username and password against stored user data.
+        If credentials match, load user data and navigate to the main application interface.
+        """
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+
+        if username in self.user_data and self.user_data[username] == password:
+            self.user_name = username
+            self.load_user_data()
+            self.clear_root()
+            self.create_sidebar()
+            self.create_main_frame()
+            self.create_select_day_screen(initial=True)
+        else:
+            messagebox.showerror("Login Failed", "Invalid username or password.")
+
+    def load_user_data(self):
+        """
+        Load specific user data from a JSON file that is named after the user.
+        If the file is not found, initialize an empty log for the user.
+        """
+        try:
+            with open(f'{self.user_name}_data.json', 'r') as f:
+                self.daily_log = json.load(f)
+        except FileNotFoundError:
+            self.daily_log = {}
+
+    def save_user_data(self):
+        """
+        Save the user's log data into a separate JSON file.
+        This method ensures that user activities are preserved across sessions.
+        """
+        with open(f'{self.user_name}_data.json', 'w') as f:
+            json.dump(self.daily_log, f)
+
+    def create_account_screen(self):
+        """
+        Create the account creation screen for new users.
+        Allows users to enter a new username and password, with appropriate validations.
+        """
+        self.clear_root()
+
+        self.create_account_frame = ctk.CTkFrame(self.root)
+        self.create_account_frame.grid(row=0, column=0, columnspan=2, sticky="nsew", padx=20, pady=20)
+
+        self.create_account_frame.columnconfigure(0, weight=1)
+        self.create_account_frame.columnconfigure(1, weight=1)
+
+        create_account_label = ctk.CTkLabel(self.create_account_frame, text="Create Account", font=ctk.CTkFont(size=28, weight="bold", family="Helvetica"))
+        create_account_label.grid(row=0, column=0, columnspan=2, pady=20)
+
+        new_username_label = ctk.CTkLabel(self.create_account_frame, text="Username:")
+        new_username_label.grid(row=1, column=0, padx=10, pady=10, sticky="e")
+
+        self.new_username_entry = ctk.CTkEntry(self.create_account_frame)
+        self.new_username_entry.grid(row=1, column=1, padx=10, pady=10, sticky="w")
+
+        new_password_label = ctk.CTkLabel(self.create_account_frame, text="Password:")
+        new_password_label.grid(row=2, column=0, padx=10, pady=10, sticky="e")
+
+        self.new_password_entry = ctk.CTkEntry(self.create_account_frame, show="*")
+        self.new_password_entry.grid(row=2, column=1, padx=10, pady=10, sticky="w")
+
+        create_button = ctk.CTkButton(self.create_account_frame, text="Create Account", command=self.create_account)
+        create_button.grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+
+        back_button = ctk.CTkButton(self.create_account_frame, text="Back to Login", command=self.create_login_screen)
+        back_button.grid(row=4, column=0, columnspan=2, padx=10, pady=10)
+
+        try:
+            footer_image = Image.open("footer.jpg")
+            footer_image = ImageOps.fit(footer_image, (700, 200), Image.LANCZOS)
+            self.footer_photo = ImageTk.PhotoImage(footer_image)
+            footer_label = tk.Label(self.create_account_frame, image=self.footer_photo)
+            footer_label.grid(row=5, column=0, columnspan=2, pady=10)
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Footer image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the footer image:\n{e}")
+
+    def create_account(self):
+        """
+        Create a new user account by saving the provided username and password.
+        Validates that the username is unique and both fields are filled.
+        """
+        new_username = self.new_username_entry.get()
+        new_password = self.new_password_entry.get()
+
+        if new_username and new_password:
+            if new_username in self.user_data:
+                messagebox.showerror("Error", "Username already exists.")
+                return
+            self.user_data[new_username] = new_password
+            with open('users.json', 'w') as f:
+                json.dump(self.user_data, f)
+            messagebox.showinfo("Account Created", f"Account for {new_username} created.")
+            self.create_login_screen()
+        else:
+            messagebox.showerror("Error", "Please fill out both fields.")
+
+    def create_select_day_screen(self, initial=False):
+        """
+        Create the screen to select a tracking day.
+        Uses a calendar widget to allow the user to pick a day for logging activities.
+        """
+        self.clear_main_frame()
+
+        self.select_day_frame = ctk.CTkFrame(self.main_frame)
+        self.select_day_frame.pack(fill='both', expand=True)
+
+        self.select_day_frame.columnconfigure(0, weight=1)
+        self.select_day_frame.rowconfigure(0, weight=1)
+        self.select_day_frame.rowconfigure(1, weight=4)
+        self.select_day_frame.rowconfigure(2, weight=1)
+        self.select_day_frame.rowconfigure(3, weight=1)
+
+        label = ctk.CTkLabel(self.select_day_frame, text="Select Tracking Day", font=ctk.CTkFont(size=28, weight="bold", family="Helvetica"))
+        label.grid(row=0, column=0, pady=10)
+
+        self.calendar = Calendar(
+            self.select_day_frame,
+            selectmode='day',
+            year=datetime.now().year,
+            month=datetime.now().month,
+            day=datetime.now().day,
+            date_pattern='yyyy-MM-dd',
+            font=('Arial', 20),
+        )
+        self.calendar.grid(row=1, column=0, pady=10)
+
+        #this here is the frame for holding buttons ( eg select and cancel)
+        button_frame = ctk.CTkFrame(self.select_day_frame)
+        button_frame.grid(row=2, column=0, pady=10)
+
+        select_button = ctk.CTkButton(button_frame, text="Select Day", command=self.select_day)
+        select_button.pack(side='left', padx=10)
+
+        #If not on initial load, provide a cancel button to return to the main view
+        if not initial:
+            cancel_button = ctk.CTkButton(button_frame, text="Cancel", command=self.show_welcome_frame)
+            cancel_button.pack(side='left', padx=10)
+
+        #this part here loads and display footer image
+        try:
+            footer_image = Image.open("footer.jpg")
+            footer_image = ImageOps.fit(footer_image, (700, 100), Image.LANCZOS)
+            self.footer_photo = ImageTk.PhotoImage(footer_image)
+            footer_label = tk.Label(self.select_day_frame, image=self.footer_photo)
+            footer_label.grid(row=3, column=0, pady=10)
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Footer image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the footer image:\n{e}")
+
+    def select_day(self):
+        """
+        Store the selected day from the calendar and refresh the main interface.
+        Once a day is selected, notify the user and proceed to the main app view.
+        """
+        selected_date_str = self.calendar.get_date()
+        #this part converts string to datetime object for consistency
+        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d')
+        self.selected_day.set(selected_date.strftime('%Y-%m-%d'))
+        messagebox.showinfo("Date Selected", f"You have selected {self.selected_day.get()} as your tracking day.")
+        #this part here returns to the welcome frame or refresh the current view
+        self.show_welcome_frame()
+
+    def create_sidebar(self):
+        """
+        Create the sidebar that contains navigation buttons for different functionalities.
+        This includes options like tracking training, diet, viewing summary, and recommendations.
+        """
+        self.sidebar_frame = ctk.CTkFrame(self.root, width=200)
+        self.sidebar_frame.grid(row=0, column=0, rowspan=4, sticky="nsw", padx=10, pady=10)
+
+        self.sidebar_frame.columnconfigure(0, weight=1)
+
+        menu_button = ctk.CTkButton(self.sidebar_frame, text="Menu", font=ctk.CTkFont(size=24, weight="bold", family="Helvetica"), command=self.show_welcome_frame)
+        menu_button.pack(pady=10)
+
+        training_button = ctk.CTkButton(self.sidebar_frame, text="Track Training", fg_color="red", command=self.show_training_frame)
+        training_button.pack(pady=10)
+
+        diet_button = ctk.CTkButton(self.sidebar_frame, text="Track Diet", fg_color="green", command=self.show_diet_frame)
+        diet_button.pack(pady=10)
+
+        summary_button = ctk.CTkButton(self.sidebar_frame, text="Summary", command=self.show_summary_frame)
+        summary_button.pack(pady=10)
+
+        diet_rec_button = ctk.CTkButton(self.sidebar_frame, text="Diet Recommendations", command=self.show_diet_recommendations)
+        diet_rec_button.pack(pady=10)
+
+        logout_button = ctk.CTkButton(self.sidebar_frame, text="Logout", command=self.logout)
+        logout_button.pack(pady=10)
+
+        track_different_day_button = ctk.CTkButton(self.sidebar_frame, text="Track Different Day", command=lambda: self.create_select_day_screen(initial=False))
+        track_different_day_button.pack(pady=10)
+
+    def logout(self):
+        """
+        Handle user logout, reset the app to the login screen.
+        Ensures any data is saved before clearing user session information.
+        """
+        self.save_user_data()
+        self.user_name = ""
+        self.daily_log = {}
+        self.clear_root()
+        self.create_login_screen()
+
+    def create_main_frame(self):
+        """
+        Create the main content area where dynamic content is displayed based on user actions.
+        This frame serves as the main area for displaying different pages like tracking diet, training, etc.
+        """
+        self.main_frame = ctk.CTkFrame(self.root)
+        self.main_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
+        self.current_frame = self.main_frame  #this line keeps track of the main frame for easy clearing
+
+    def show_welcome_frame(self):
+        """
+        Display a welcome message along with header and footer images to enhance visual appeal.
+        Acts as a homepage for the user after login and provides a friendly interface.
+        """
+        self.clear_main_frame()
+
+        try:
+            header_image = Image.open("header.jpg")
+            header_image = ImageOps.fit(header_image, (700, 150), Image.LANCZOS)
+            self.header_photo = ImageTk.PhotoImage(header_image)
+            header_label = tk.Label(self.main_frame, image=self.header_photo)
+            header_label.pack(side='top', fill='x')
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Header image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the header image:\n{e}")
+
+        #this part will display welcome message with the user's name
+        welcome_label = ctk.CTkLabel(
+            self.main_frame,
+            text=f"Welcome, {self.user_name}!",
+            font=ctk.CTkFont(size=28, weight="bold", family="Helvetica")
+        )
+        welcome_label.pack(expand=True)
+
+        #here it will load footer image and place at the bottom of the frame
+        try:
+            footer_image = Image.open("footer.jpg")
+            footer_image = ImageOps.fit(footer_image, (700, 150), Image.LANCZOS)
+            self.footer_photo = ImageTk.PhotoImage(footer_image)
+            footer_label = tk.Label(self.main_frame, image=self.footer_photo)
+            footer_label.pack(side='bottom', fill='x')
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Footer image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the footer image:\n{e}")
+
+    def show_training_frame(self):
+        """
+        Display a frame for tracking training with options to select workout programs and exercises.
+        Also displays an image corresponding to the selected workout program for better user experience.
+        """
+        self.clear_main_frame()
+
+        training_label = ctk.CTkLabel(self.main_frame, text="Track your Training", font=ctk.CTkFont(size=24, weight="bold", family="Helvetica"))
+        training_label.pack(pady=10)
+
+        self.workout_image_label = tk.Label(self.main_frame)
+        self.workout_image_label.pack(pady=10)
+
+        #this is the dictionary to define workout programs and corresponding exercises
+        self.workout_programs = {
+            "Full Body": [("Squats", "3x12"), ("Bench Press", "3x10"), ("Deadlift", "3x8"), ("Pull-ups", "3x8"), ("Shoulder Press", "3x10")],
+            "Upper Body": [("Bench Press", "4x8"), ("Pull-ups", "3x8"), ("Shoulder Press", "3x10"), ("Bicep Curls", "3x12"), ("Tricep Dips", "3x12")],
+            "Lower Body": [("Squats", "4x8"), ("Lunges", "3x10"), ("Deadlift", "3x8"), ("Calf Raises", "3x15"), ("Leg Press", "3x10")],
+            "Cardio": [("Running", "30 mins"), ("Cycling", "45 mins"), ("Jump Rope", "15 mins"), ("Burpees", "3x12"), ("Mountain Climbers", "3x15")],
+        }
+
+        #assigns the images with workout programs
+        self.workout_images = {
+            "Full Body": "full_body.jpg",
+            "Upper Body": "upper_body.jpg",
+            "Lower Body": "lower_body.jpg",
+            "Cardio": "cardio.jpg"
+        }
+
+        #this is a dropdown box for selecting workout program
+        self.program_var = tk.StringVar(value="Select Program")
+        program_dropdown = ctk.CTkComboBox(self.main_frame, variable=self.program_var, values=list(self.workout_programs.keys()), width=200)
+        program_dropdown.pack(pady=10)
+
+        #this part is the frame to display exercises based on selected workout program
+        self.exercises_frame = ctk.CTkFrame(self.main_frame)
+        self.exercises_frame.pack(pady=10)
+
+        finish_button = ctk.CTkButton(self.main_frame, text="Finish Workout", command=self.save_training_data)
+        finish_button.pack(pady=10)
+
+        #this line updates exercises list whenever the dropdown selection changes
+        self.program_var.trace("w", self.update_exercises)
+
+    def update_exercises(self, *args):
+        """
+        Update the exercises displayed based on the selected workout program.
+        Additionally, display an image related to the workout to visually guide the user.
+        """
+        for widget in self.exercises_frame.winfo_children():
+            widget.destroy()
+
+        self.workout_image_label.config(image='')
+
+        selected_program = self.program_var.get()
+        if selected_program in self.workout_programs:
+            exercises = self.workout_programs[selected_program]
+            self.exercise_vars = {}
+            for idx, (exercise, reps) in enumerate(exercises):
+                var = tk.IntVar()
+                chk = ctk.CTkCheckBox(self.exercises_frame, text=f"{exercise}: {reps}", variable=var)
+                chk.grid(row=idx, column=0, sticky='w', padx=10, pady=5)
+                self.exercise_vars[exercise] = var
+
+            #this section will display the image associated with the selected workout program
+            image_filename = self.workout_images.get(selected_program)
+            if image_filename:
+                try:
+                    img = Image.open(image_filename)
+                    img = ImageOps.fit(img, (400, 200), Image.LANCZOS)
+                    self.workout_photo = ImageTk.PhotoImage(img)
+                    self.workout_image_label.config(image=self.workout_photo)
+                except FileNotFoundError:
+                    messagebox.showerror("Error", f"Image for {selected_program} not found.")
+                except Exception as e:
+                    messagebox.showerror("Error", f"An error occurred while loading the image for {selected_program}:\n{e}")
+
+    def save_training_data(self):
+        """
+        Save the selected exercises into the user's daily log.
+        Avoids duplicating exercises and ensures consistent storage of the training data.
+        """
+        if not hasattr(self, 'exercise_vars'):
+            messagebox.showwarning("No Program Selected", "Please select a workout program.")
+            return
+        selected_exercises = [exercise for exercise, var in self.exercise_vars.items() if var.get() == 1]
+        if selected_exercises:
+            date_str = self.selected_day.get()
+            if date_str not in self.daily_log:
+                self.daily_log[date_str] = {}
+            if 'training' not in self.daily_log[date_str]:
+                self.daily_log[date_str]['training'] = []
+            for exercise in selected_exercises:
+                if exercise not in self.daily_log[date_str]['training']:
+                    self.daily_log[date_str]['training'].append(exercise)
+            self.save_user_data()  #this part will save data after changes to ensure consistencey
+            messagebox.showinfo("Training Logged", f"Your training for {date_str} has been saved.")
+        else:
+            messagebox.showwarning("No Exercises Selected", "Please select at least one exercise.")
+
+    def show_diet_frame(self):
+        """
+        Create a frame for logging dietary information.
+        Allows the user to log meals and their calorie content, along with an image for visual enhancement.
+        """
+        self.clear_main_frame()
+        diet_label = ctk.CTkLabel(self.main_frame, text="Track your Diet", font=ctk.CTkFont(size=24, weight="bold", family="Helvetica"))
+        diet_label.pack(pady=10)
+
+        #this will load am image on the diet tab to boost aesthetics
+        try:
+            diet_image = Image.open("diet.jpg")
+            diet_image = ImageOps.fit(diet_image, (600, 400), Image.LANCZOS)
+            self.diet_photo = ImageTk.PhotoImage(diet_image)
+            diet_image_label = tk.Label(self.main_frame, image=self.diet_photo)
+            diet_image_label.pack(pady=10)
+        except FileNotFoundError:
+            messagebox.showerror("Error", "Diet image not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the diet image:\n{e}")
+
+        diet_entry_label = ctk.CTkLabel(self.main_frame, text="What did you eat today?")
+        diet_entry_label.pack(pady=10)
+
+        self.diet_entry = ctk.CTkEntry(self.main_frame, width=400)
+        self.diet_entry.pack(pady=10)
+
+        diet_calories_label = ctk.CTkLabel(self.main_frame, text="Enter calories for this meal:")
+        diet_calories_label.pack(pady=10)
+
+        self.calories_entry = ctk.CTkEntry(self.main_frame, width=200)
+        self.calories_entry.pack(pady=10)
+
+        save_button = ctk.CTkButton(self.main_frame, text="Save", command=lambda: self.save_data("diet"))
+        save_button.pack(pady=10)
+
+    def show_summary_frame(self):
+        """
+        Display a summary frame showing a weekly overview of logged activities.
+        The summary includes details of training and diet entries, allowing navigation between weeks.
+        """
+        self.clear_main_frame()
+        summary_label = ctk.CTkLabel(self.main_frame, text="Weekly Summary", font=ctk.CTkFont(size=24, weight="bold", family="Helvetica"))
+        summary_label.pack(pady=10)
+
+        #these are the navigation buttons to move between weeks
+        nav_frame = ctk.CTkFrame(self.main_frame)
+        nav_frame.pack(pady=5)
+
+        prev_button = ctk.CTkButton(nav_frame, text="<< Previous Week", command=self.prev_week)
+        prev_button.pack(side='left', padx=5)
+
+        week_label = ctk.CTkLabel(nav_frame, text=f"Week of {self.current_week_start.strftime('%Y-%m-%d')}")
+        week_label.pack(side='left', padx=10)
+
+        next_button = ctk.CTkButton(nav_frame, text="Next Week >>", command=self.next_week)
+        next_button.pack(side='left', padx=5)
+
+        #this will create a scrollable frame to display each day's summary
+        scrollable_frame = ctk.CTkScrollableFrame(self.main_frame, width=600, height=400)
+        scrollable_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+        #here it will display summaries for each day of the current week
+        for i in range(7):
+            day_date = self.current_week_start + timedelta(days=i)
+            date_str = day_date.strftime('%Y-%m-%d')
+            day_name = day_date.strftime('%A')
+
+            #this section here will retrieve logs for the current day
+            log = self.daily_log.get(date_str, {})
+            diet = log.get('diet', 'No diet logged.')
+            training = log.get('training', 'No training logged.')
+
+            #now it will format diet entries and calculate total calories
+            if diet == 'No diet logged.':
+                diet_text = diet
+                total_calories = 0
+            else:
+                diet_text = ''
+                total_calories = 0
+                for entry in diet:
+                    meal = entry['meal']
+                    calories = entry['calories']
+                    diet_text += f"{meal} - {calories} calories\n"
+                    total_calories += calories
+
+            training_text = training if isinstance(training, str) else '\n'.join(training)
+
+            day_frame = ctk.CTkFrame(scrollable_frame)
+            day_frame.pack(pady=5, fill='x')
+
+            date_label = ctk.CTkLabel(day_frame, text=f"{day_name}, {date_str}", font=ctk.CTkFont(size=18, weight="bold", family="Helvetica"))
+            date_label.pack(pady=5)
+
+            diet_label = ctk.CTkLabel(day_frame, text=f"Diet:\n{diet_text}", font=ctk.CTkFont(size=14))
+            diet_label.pack(pady=5)
+
+            if total_calories > 0:
+                total_cal_label = ctk.CTkLabel(day_frame, text=f"Total Calories Intake: {total_calories} calories", font=ctk.CTkFont(size=14, weight="bold"))
+                total_cal_label.pack(pady=5)
+
+            training_label = ctk.CTkLabel(day_frame, text=f"Training:\n{training_text}", font=ctk.CTkFont(size=14))
+            training_label.pack(pady=5)
+
+    def prev_week(self):
+        """
+        Navigate to the previous week's summary.
+        Adjusts the current week start date and refreshes the summary frame.
+        """
+        self.current_week_start -= timedelta(days=7)
+        self.show_summary_frame()
+
+    def next_week(self):
+        """
+        Navigate to the next week's summary.
+        Adjusts the current week start date and refreshes the summary frame.
+        """
+        self.current_week_start += timedelta(days=7)
+        self.show_summary_frame()
+
+    def show_diet_recommendations(self):
+        """
+        Display a list of diet recommendations along with their ingredients, recipes, and images.
+        Users can view the details of each recommended meal.
+        """
+        self.clear_main_frame()
+        recommendations_label = ctk.CTkLabel(self.main_frame, text="Diet Recommendations", font=ctk.CTkFont(size=24, family="Helvetica"))
+        recommendations_label.pack(pady=20)
+
+        #here is the dictionary that defines food recommendations, including images and calorie content
+        self.food_items = {
+            "Grilled Chicken Salad": {
+                "Ingredients": "Chicken breast, mixed greens, cherry tomatoes, cucumbers, olive oil, lemon juice",
+                "Recipe": "Grill chicken, mix ingredients, and dress with olive oil and lemon juice.",
+                "Image": "grilled_chicken_salad.jpg",
+                "Calories": 350
+            },
+            "Quinoa Bowl": {
+                "Ingredients": "Quinoa, black beans, corn, avocado, salsa",
+                "Recipe": "Cook quinoa, mix with beans, corn, top with avocado and salsa.",
+                "Image": "quinoa_bowl.jpg",
+                "Calories": 450
+            },
+            "Smoothie": {
+                "Ingredients": "Spinach, banana, almond milk, chia seeds",
+                "Recipe": "Blend all ingredients until smooth.",
+                "Image": "smoothie.jpg",
+                "Calories": 250
+            },
+            "Oatmeal with Fruits": {
+                "Ingredients": "Oats, milk or water, berries, honey",
+                "Recipe": "Cook oats with milk or water, top with berries and drizzle honey.",
+                "Image": "oatmeal_with_fruits.jpg",
+                "Calories": 300
+            },
+            "Stir-Fried Vegetables": {
+                "Ingredients": "Broccoli, capsicum, carrots, soy sauce, garlic",
+                "Recipe": "Stir-fry vegetables with garlic and soy sauce.",
+                "Image": "stir_fried_vegetables.jpg",
+                "Calories": 200
+            },
+            "Baked Salmon": {
+                "Ingredients": "Salmon fillet, lemon, dill, olive oil",
+                "Recipe": "Bake salmon with lemon slices and dill.",
+                "Image": "baked_salmon.jpg",
+                "Calories": 400
+            },
+            "Egg Omelette": {
+                "Ingredients": "Eggs, spinach, mushrooms, cheese",
+                "Recipe": "Beat eggs, add fillings, cook in pan.",
+                "Image": "egg_omelette.jpg",
+                "Calories": 350
+            },
+            "Chicken Stir Fry": {
+                "Ingredients": "Chicken breast, mixed vegetables, soy sauce, garlic, ginger",
+                "Recipe": "Stir-fry chicken and vegetables, add sauce.",
+                "Image": "chicken_stir_fry.jpg",
+                "Calories": 380
+            },
+            "Avocado Toast": {
+                "Ingredients": "Whole grain bread, avocado, salt, pepper, lemon juice",
+                "Recipe": "Toast bread, mash avocado with seasonings, spread on toast.",
+                "Image": "avocado_toast.jpg",
+                "Calories": 280
+            },
+            "Grilled Shrimp Skewers": {
+                "Ingredients": "Shrimp, garlic, olive oil, lemon juice, skewers",
+                "Recipe": "Marinate shrimp, place on skewers, grill until cooked.",
+                "Image": "grilled_shrimp_skewers.jpg",
+                "Calories": 300
+            },
+            "Veggie Pasta": {
+                "Ingredients": "Whole wheat pasta, zucchini, tomatoes, capsicum, olive oil",
+                "Recipe": "Cook pasta, sauté vegetables, mix together.",
+                "Image": "veggie_pasta.jpg",
+                "Calories": 400
+            }
+        }
+
+        #this section will create a frame for each food recommendation
+        for i, (food, details) in enumerate(self.food_items.items()):
+            frame = ctk.CTkFrame(self.main_frame)
+            frame.pack(fill='x', padx=20, pady=5)
+            food_label = ctk.CTkLabel(frame, text=food, font=ctk.CTkFont(size=18, family="Helvetica"))
+            food_label.pack(side='left')
+
+            recipe_button = ctk.CTkButton(frame, text="Show Recipe", command=lambda f=food: self.show_recipe_frame(f))
+            recipe_button.pack(side='right')
+
+    def show_recipe_frame(self, food):
+        """
+        Display a detailed view of a selected food recommendation.
+        Shows the recipe image, ingredients, and instructions to prepare the dish.
+        """
+        self.clear_main_frame()
+
+        details = self.food_items[food]
+
+        recipe_label = ctk.CTkLabel(self.main_frame, text=food, font=ctk.CTkFont(size=24, weight="bold", family="Helvetica"))
+        recipe_label.pack(pady=10)
+
+        try:
+            img = Image.open(details['Image'])
+            img = ImageOps.fit(img, (500, 300), Image.LANCZOS)
+            self.recipe_photo = ImageTk.PhotoImage(img)
+            image_label = tk.Label(self.main_frame, image=self.recipe_photo)
+            image_label.pack(pady=10)
+        except FileNotFoundError:
+            messagebox.showerror("Error", f"Image for {food} not found.")
+        except Exception as e:
+            messagebox.showerror("Error", f"An error occurred while loading the image for {food}:\n{e}")
+
+        calories_label = ctk.CTkLabel(self.main_frame, text=f"Total Calories: {details['Calories']} kcal", font=ctk.CTkFont(size=16, weight="bold"))
+        calories_label.pack(pady=5)
+
+        ingredients_label = ctk.CTkLabel(self.main_frame, text=f"Ingredients:\n{details['Ingredients']}", font=ctk.CTkFont(size=16))
+        ingredients_label.pack(pady=5)
+
+        recipe_steps_label = ctk.CTkLabel(self.main_frame, text=f"Recipe:\n{details['Recipe']}", font=ctk.CTkFont(size=16))
+        recipe_steps_label.pack(pady=5)
+
+        back_button = ctk.CTkButton(self.main_frame, text="Back to Recommendations", command=self.show_diet_recommendations)
+        back_button.pack(pady=10)
+
+    def save_data(self, category):
+        """
+        Save data related to diet or other categories into the daily log.
+        Ensures that entries are validated before saving to prevent incomplete data.
+        """
+        date_str = self.selected_day.get()
+        if date_str not in self.daily_log:
+            self.daily_log[date_str] = {}
+        if category == "diet":
+            meal = self.diet_entry.get()
+            calories = self.calories_entry.get()
+            if not meal or not calories:
+                messagebox.showwarning("Incomplete Data", "Please enter both meal and calories.")
+                return
+            try:
+                calories = float(calories)
+            except ValueError:
+                messagebox.showerror("Invalid Input", "Please enter a valid number for calories.")
+                return
+            if 'diet' not in self.daily_log[date_str]:
+                self.daily_log[date_str]['diet'] = []
+            self.daily_log[date_str]['diet'].append({'meal': meal, 'calories': calories})
+            self.save_user_data()  #this here saves the data after changes to ensure consistency
+            messagebox.showinfo("Diet Entry Saved", f"Your diet entry for {date_str} has been saved.")
+            #this clears the input fields after saving
+            self.diet_entry.delete(0, tk.END)
+            self.calories_entry.delete(0, tk.END)
+
+if __name__ == "__main__":
+    #Initializes the main application window and start the FitnessTrackerApp
+    root = ctk.CTk()
+    app = FitnessTrackerApp(root)
+    root.mainloop()
+
 
